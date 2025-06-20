@@ -1,71 +1,89 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox
-from pytube import YouTube
-from tqdm import tqdm
+from tkinter import messagebox, filedialog
+import threading
+import yt_dlp
 import os
-import sys
 
-# ─────────────────────────────────────────────
-# Function to show a progress bar in terminal
-# pytube calls this function with stream info
-# ─────────────────────────────────────────────
-def on_progress(stream, chunk, bytes_remaining):
-    total_size = stream.filesize
-    bytes_downloaded = total_size - bytes_remaining
+# Carpeta por defecto
+DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 
-    percentage_of_completion = bytes_downloaded / total_size * 100
-    pbar.n = bytes_downloaded
-    pbar.refresh()
+# Función principal de descarga
+def download_video(url, format_choice, button):
+    try:
+        button.config(state="disabled")
+        os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# ─────────────────────────────────────────────
-# Setup basic popup interface
-# ─────────────────────────────────────────────
-root = tk.Tk()
-root.withdraw()
+        options = {
+            'format': 'bestaudio/best' if format_choice == "mp3" else 'bestvideo+bestaudio/best',
+            'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
+            'ffmpeg_location': r'D:\ffmpeg\ffmpeg-7.1.1-essentials_build\bin',
+        }
 
-url = simpledialog.askstring("YouTube Downloader", "Paste the YouTube video link:")
-if not url:
-    messagebox.showinfo("Cancelled", "No URL provided. Exiting.")
-    sys.exit()
+        if format_choice == "mp3":
+            options['postprocessors'] = [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
 
-format_choice = simpledialog.askstring("Format", "Download as MP3 or MP4? (type mp3 or mp4)")
-if not format_choice or format_choice.lower() not in ["mp3", "mp4"]:
-    messagebox.showerror("Invalid Input", "You must type 'mp3' or 'mp4'.")
-    sys.exit()
+        with yt_dlp.YoutubeDL(options) as ydl:
+            ydl.download([url])
 
-format_choice = format_choice.lower()
+        messagebox.showinfo("Éxito", f"Descarga completada como {format_choice.upper()}")
+        os.startfile(DOWNLOAD_FOLDER)
 
-try:
-    # ─────────────────────────────────────────────
-    # Attach progress callback to YouTube object
-    # ─────────────────────────────────────────────
-    yt = YouTube(url, on_progress_callback=on_progress)
-    title = yt.title
+    except Exception as e:
+        messagebox.showerror("Error", f"Hubo un problema:\n{str(e).encode('ascii', 'ignore').decode()}")
+    finally:
+        button.config(state="normal")
 
-    # Choose stream based on format
-    stream = yt.streams.get_audio_only() if format_choice == "mp3" else yt.streams.get_highest_resolution()
+# Maneja clic en botón
+def on_download_click(entry, format_var, button):
+    url = entry.get().strip()
+    format_choice = format_var.get()
+    if not url:
+        messagebox.showerror("Error", "Por favor, pega un enlace de YouTube.")
+        return
+    threading.Thread(target=download_video, args=(url, format_choice, button)).start()
 
-    # ─────────────────────────────────────────────
-    # Set up tqdm progress bar
-    # ─────────────────────────────────────────────
-    print(f"\nDownloading: {title}")
-    pbar = tqdm(total=stream.filesize, unit='B', unit_scale=True, desc='Progress', ncols=70)
+# Selector de carpeta
+def choose_folder(label):
+    global DOWNLOAD_FOLDER
+    folder = filedialog.askdirectory()
+    if folder:
+        DOWNLOAD_FOLDER = folder
+        label.config(text=f"Carpeta: {folder}")
 
-    # Download file
-    download_path = stream.download()
-    pbar.close()
+# Construye GUI
+def create_gui():
+    window = tk.Tk()
+    window.title("YouTube Downloader")
+    window.geometry("500x260")
+    window.resizable(False, False)
 
-    if format_choice == "mp3":
-        from moviepy.editor import AudioFileClip
-        mp3_path = os.path.splitext(download_path)[0] + ".mp3"
-        print("Converting to MP3...")
-        audio_clip = AudioFileClip(download_path)
-        audio_clip.write_audiofile(mp3_path)
-        audio_clip.close()
-        os.remove(download_path)
-        messagebox.showinfo("Success", f"MP3 downloaded: {mp3_path}")
-    else:
-        messagebox.showinfo("Success", f"MP4 downloaded: {download_path}")
+    # Instrucciones
+    tk.Label(window, text="Pega el enlace de YouTube:").pack(pady=(10, 0))
+    url_entry = tk.Entry(window, width=60)
+    url_entry.pack(pady=(5, 10))
 
-except Exception as e:
-    messagebox.showerror("Error", str(e))
+    # Selector de formato
+    format_var = tk.StringVar(value="mp3")
+    format_frame = tk.Frame(window)
+    tk.Label(format_frame, text="Formato:").pack(side="left")
+    tk.Radiobutton(format_frame, text="MP3", variable=format_var, value="mp3").pack(side="left")
+    tk.Radiobutton(format_frame, text="MP4", variable=format_var, value="mp4").pack(side="left")
+    format_frame.pack()
+
+    # Carpeta destino
+    folder_label = tk.Label(window, text=f"Carpeta: {DOWNLOAD_FOLDER}")
+    folder_label.pack(pady=(10, 0))
+    tk.Button(window, text="Cambiar carpeta", command=lambda: choose_folder(folder_label)).pack(pady=(0, 10))
+
+    # Botón descargar
+    download_button = tk.Button(window, text="Descargar", command=lambda: on_download_click(url_entry, format_var, download_button))
+    download_button.pack()
+
+    window.mainloop()
+
+if __name__ == "__main__":
+    create_gui()

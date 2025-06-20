@@ -1,6 +1,6 @@
 import yt_dlp
 
-url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+url = "https://www.youtube.com/watch?v=uBOnYAK3WZ4"
 
 options = {
     'format': 'bestaudio/best',
