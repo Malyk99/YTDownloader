@@ -3,6 +3,7 @@ from tkinter import messagebox, filedialog, ttk
 import threading
 import yt_dlp
 import os
+from datetime import datetime
 
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 
@@ -49,6 +50,9 @@ def download_playlist_items(url, format_choice, button, label_status, progress_b
             with yt_dlp.YoutubeDL(base_options) as ydl:
                 ydl.download([entry['webpage_url']])
             progress_bar['value'] = i
+            with open("log_descargas.txt", "a", encoding="utf-8") as log_file:
+                fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                log_file.write(f"[{fecha}] {title} - {format_choice.upper()}\n")
 
         messagebox.showinfo("Éxito", "Todas las descargas han finalizado.")
         os.startfile(DOWNLOAD_FOLDER)
