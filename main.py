@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox, filedialog
 import threading
 import yt_dlp
 import os
@@ -7,7 +7,7 @@ from datetime import datetime
 
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 
-def download_playlist_items(url, format_choice, button, label_status, progress_bar):
+def download_playlist_items(url, format_choice, button, label_status):
     try:
         button.config(state="disabled")
         os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
@@ -15,11 +15,10 @@ def download_playlist_items(url, format_choice, button, label_status, progress_b
         base_options = {
             'outtmpl': f'{DOWNLOAD_FOLDER}/%(title)s.%(ext)s',
             'ffmpeg_location': r'D:\ffmpeg\ffmpeg-7.1.1-essentials_build\bin',
-            'quiet': True,  # evita prints de consola
+            'quiet': True,
             'noplaylist': False,
         }
 
-        # Formato
         if format_choice == "mp3":
             base_options['format'] = 'bestaudio/best'
             base_options['postprocessors'] = [{
@@ -31,30 +30,52 @@ def download_playlist_items(url, format_choice, button, label_status, progress_b
             base_options['format'] = 'bestvideo+bestaudio/best'
             base_options['merge_output_format'] = 'mp4'
 
-        # Extraemos lista sin descargar aún
         with yt_dlp.YoutubeDL(base_options) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        if 'entries' in info:
-            entries = info['entries']
-        else:
-            entries = [info]
+        entries_raw = info.get('entries', [info])
+        entries = []
+        skipped = 0
 
-        total = len(entries)
-        progress_bar.config(maximum=total)
-        progress_bar['value'] = 0
+        for entry in entries_raw:
+            if not entry or not isinstance(entry, dict):
+                skipped += 1
+                continue
+            url = entry.get("webpage_url") or entry.get("url")
+            title = entry.get("title")
+            if url and title:
+                entries.append({"url": url, "title": title})
+            else:
+                skipped += 1
+
+        if not entries:
+            label_status.config(text="")
+            messagebox.showwarning(
+                "Sin vídeos válidos",
+                f"No se pudo descargar ningún vídeo.\nVideos omitidos o no disponibles: {skipped}"
+            )
+        return
+
 
         for i, entry in enumerate(entries, 1):
-            title = entry.get('title', 'Desconocido')
+            title = entry['title']
+            url = entry['url']
             label_status.config(text=f"Descargando {i}/{total}: {title[:50]}...")
-            with yt_dlp.YoutubeDL(base_options) as ydl:
-                ydl.download([entry['webpage_url']])
-            progress_bar['value'] = i
+            try:
+                with yt_dlp.YoutubeDL(base_options) as ydl:
+                    ydl.download([url])
+            except Exception as e:
+                skipped += 1
+                print(f"[ERROR] {title}: {e}")
+                continue
             with open("log_descargas.txt", "a", encoding="utf-8") as log_file:
                 fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 log_file.write(f"[{fecha}] {title} - {format_choice.upper()}\n")
 
-        messagebox.showinfo("Éxito", "Todas las descargas han finalizado.")
+        msg = f"Descargas finalizadas: {total}"
+        if skipped:
+            msg += f"\nSaltados: {skipped} no disponibles o con errores."
+        messagebox.showinfo("Proceso completado", msg)
         os.startfile(DOWNLOAD_FOLDER)
 
     except Exception as e:
@@ -62,15 +83,20 @@ def download_playlist_items(url, format_choice, button, label_status, progress_b
     finally:
         button.config(state="normal")
         label_status.config(text="")
-        progress_bar['value'] = 0
 
-def on_download_click(entry, format_var, button, label_status, progress_bar):
+def on_download_click(entry, format_var, button, label_status):
     url = entry.get().strip()
     format_choice = format_var.get()
+
+    if "list=RD" in url or "start_radio=1" in url or "&rv=" in url:
+        messagebox.showerror("URL inválida", "YouTube radio mixes no son compatibles.\nPor favor pega una playlist real.")
+        return
+
     if not url:
         messagebox.showerror("Error", "Por favor, pega un enlace de YouTube.")
         return
-    threading.Thread(target=download_playlist_items, args=(url, format_choice, button, label_status, progress_bar)).start()
+
+    threading.Thread(target=download_playlist_items, args=(url, format_choice, button, label_status)).start()
 
 def choose_folder(label):
     global DOWNLOAD_FOLDER
@@ -82,15 +108,13 @@ def choose_folder(label):
 def create_gui():
     window = tk.Tk()
     window.title("YT Downloader")
-    window.geometry("550x310")
+    window.geometry("550x270")
     window.resizable(False, False)
 
-    # Entrada de enlace
     tk.Label(window, text="Pega el enlace de YouTube o de una playlist:").pack(pady=(10, 0))
     url_entry = tk.Entry(window, width=70)
     url_entry.pack(pady=(5, 10))
 
-    # Selector de formato
     format_var = tk.StringVar(value="mp3")
     format_frame = tk.Frame(window)
     tk.Label(format_frame, text="Formato:").pack(side="left")
@@ -98,20 +122,14 @@ def create_gui():
     tk.Radiobutton(format_frame, text="MP4", variable=format_var, value="mp4").pack(side="left")
     format_frame.pack()
 
-    # Carpeta
     folder_label = tk.Label(window, text=f"Carpeta: {DOWNLOAD_FOLDER}")
     folder_label.pack(pady=(10, 0))
     tk.Button(window, text="Cambiar carpeta", command=lambda: choose_folder(folder_label)).pack()
 
-    # Estado y barra
     label_status = tk.Label(window, text="", wraplength=500, justify="center")
-    label_status.pack(pady=(15, 5))
+    label_status.pack(pady=(15, 10))
 
-    progress_bar = ttk.Progressbar(window, orient="horizontal", mode="determinate", length=450)
-    progress_bar.pack(pady=(0, 10))
-
-    # Botón
-    download_button = tk.Button(window, text="Iniciar descarga", command=lambda: on_download_click(url_entry, format_var, download_button, label_status, progress_bar))
+    download_button = tk.Button(window, text="Iniciar descarga", command=lambda: on_download_click(url_entry, format_var, download_button, label_status))
     download_button.pack(pady=(10, 10))
 
     window.mainloop()
