@@ -1,0 +1,5 @@
+https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'process_spotify_playlist' from 'logic_playlist' (d:\PROJECTS\Python\YTDownloader\logic_playlist.py)
+https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'process_spotify_playlist_simple' from 'logic_playlist' (d:\PROJECTS\Python\YTDownloader\logic_playlist.py)
+https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
+https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
+https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
