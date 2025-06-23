@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
 import json
+import threading
 
 CONFIG_FILE = "config.json"
 
@@ -98,46 +99,61 @@ class DownloaderGUI:
         input_path = self.input_path.get().strip()
         input_type = self.input_type.get()
         output_dir = self.last_directory
+        format_choice = self.format_choice.get()
 
         if not input_path:
             messagebox.showerror("Error", "Please provide a valid input.")
             return
 
         self.status_text.set("Preparing...")
+        self.root.update_idletasks()
 
-        try:
-            if input_type == "txt":
-                from logic_list import download_from_txt
-                self.status_text.set("Downloading from list...")
-                download_from_txt(input_path, output_dir)
+        # Desactiva el botón para evitar doble clic
+        for widget in self.root.winfo_children():
+            if isinstance(widget, tk.Button) and widget["text"] == "Start Download":
+                widget.config(state="disabled")
 
-            elif input_type == "youtube":
-                from logic_youtube import download_youtube_single
-                format_choice = self.format_choice.get()
-                self.status_text.set(f"Downloading as {format_choice}...")
-                download_youtube_single(input_path, output_dir, format_choice)
+        def threaded_task():
+            try:
+                if input_type == "txt":
+                    from logic_list import download_from_txt
+                    self.status_text.set("Downloading from list...")
+                    download_from_txt(input_path, output_dir)
 
-            elif input_type == "youtube_playlist":
-                from logic_playlist import download_playlist_items
-                format_choice = self.format_choice.get()
-                self.status_text.set("Downloading YouTube playlist...")
-                download_playlist_items(input_path, output_dir, format_choice)
+                elif input_type == "youtube":
+                    from logic_youtube import download_youtube_single
+                    self.status_text.set(f"Downloading as {format_choice}...")
+                    download_youtube_single(input_path, output_dir, format_choice)
 
-            elif input_type == "spotify_playlist":
-                from logic_spotify import process_spotify_playlist_simple
-                self.status_text.set("Fetching songs from Spotify...")
-                txt_path = process_spotify_playlist_simple(input_path)
-                self.status_text.set("Downloading from generated list...")
-                from logic_list import download_from_txt
-                download_from_txt(txt_path, output_dir)
+                elif input_type == "youtube_playlist":
+                    from logic_playlist import download_playlist_items
+                    self.status_text.set("Downloading YouTube playlist...")
+                    download_playlist_items(input_path, output_dir, format_choice)
 
-            self.status_text.set("Download complete.")
+                elif input_type == "spotify_playlist":
+                    from logic_spotify import process_spotify_playlist_simple
+                    self.status_text.set("Fetching songs from Spotify...")
+                    txt_path = process_spotify_playlist_simple(input_path)
+                    self.status_text.set("Downloading from generated list...")
+                    from logic_list import download_from_txt
+                    download_from_txt(txt_path, output_dir)
 
-        except Exception as e:
-            self.status_text.set("An error occurred. Check log_failed.txt.")
-            with open("log_failed.txt", "a", encoding="utf-8") as f:
-                f.write(f"{input_path} - {str(e)}\n")
-            print(f"Error: {e}")
+                self.status_text.set("Download complete.")
+
+            except Exception as e:
+                self.status_text.set("An error occurred. Check log_failed.txt.")
+                with open("log_failed.txt", "a", encoding="utf-8") as f:
+                    f.write(f"{input_path} - {str(e)}\n")
+                print(f"Error: {e}")
+
+            finally:
+                # Reactiva el botón tras la descarga
+                for widget in self.root.winfo_children():
+                    if isinstance(widget, tk.Button) and widget["text"] == "Start Download":
+                        widget.config(state="normal")
+
+        threading.Thread(target=threaded_task).start()
+
 
 
 def run_gui():

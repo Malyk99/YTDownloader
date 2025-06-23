@@ -3,3 +3,4 @@ https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'p
 https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
 https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
 https://open.spotify.com/playlist/3ZLtUFFtPHS4cgVd7ZGFwB - cannot import name 'download_from_list' from 'logic_list' (d:\PROJECTS\Python\YTDownloader\logic_list.py)
+https://open.spotify.com/intl-es/album/6j8S3AOIOXBR1qfd3n2wHm?highlight=spotify:track:1cMU20gleQO9xYjCeni3DJ - No valid playlist ID found in the URL.
